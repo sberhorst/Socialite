@@ -390,11 +390,11 @@ function addon:countRealID(filterClients)
   local _, numOnline = BNGetNumFriends()
   for i=1, numOnline do
     local ai = C_BattleNet.GetFriendAccountInfo(i);
-    local ga = ai.gameAccountInfo
-    if ga.clientProgram == BNET_CLIENT_APP or ga.clientProgram == "BSAp" then
+    local ga = ai and ai.gameAccountInfo
+    if (ga and ga.clientProgram == BNET_CLIENT_APP) or (ga and ga.clientProgram == "BSAp") then
       bnet = bnet + 1
     else
-      if (ga.clientProgram ~= "") then
+      if (ga and ga.clientProgram ~= "") then
         friends = friends + 1
       end
     end
