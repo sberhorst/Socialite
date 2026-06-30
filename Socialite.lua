@@ -248,6 +248,46 @@ do
       -- On login, request a fresh roster from the server so
       -- GUILD_ROSTER_UPDATE fires with current data.
       if IsInGuild() then C_GuildInfo.GuildRoster() end
+
+      -- Force-populate ClubMemberInfo structs for all communities.
+      -- C_Club.GetMemberInfo() returns "Unknown" for name/guid until
+      -- Blizzard's Communities UI opens, because member detail data is
+      -- lazy-loaded server-side. C_Club.SetClubPresenceSubscription(clubId)
+      -- is the call that triggers the server to push that data to the client
+      -- (it's what Blizzard's own panel calls when it opens). Constraint:
+      -- only 0 or 1 club can be subscribed for presence at a time, so we
+      -- cycle through each community club in sequence with a short delay
+      -- between each, then clear the subscription when done so we don't
+      -- interfere with Blizzard's own Communities frame if the player opens it.
+      local clubs = C_Club.GetSubscribedClubs()
+      if clubs and #clubs > 0 then
+        local communityClubs = {}
+        for _, club in ipairs(clubs) do
+          if club.clubType == Enum.ClubType.Character then
+            table.insert(communityClubs, club)
+          end
+        end
+        if #communityClubs > 0 then
+          local i = 0
+          local function subscribeNext()
+            i = i + 1
+            if i <= #communityClubs then
+              C_Club.SetClubPresenceSubscription(communityClubs[i].clubId)
+              -- 0.5s per club gives the server time to push member data
+              -- before we move to the next. Adjust if needed for large communities.
+              C_Timer.After(0.5, subscribeNext)
+            else
+              -- Done cycling — clear the subscription so Blizzard's
+              -- own Communities frame can manage it without conflict.
+              C_Club.SetClubPresenceSubscription(0)
+            end
+          end
+          -- Small initial delay to let the club system finish initialising
+          -- before we start subscribing (clubs may not all be CLUB_ADDED yet).
+          C_Timer.After(1.0, subscribeNext)
+        end
+      end
+
       -- Update non-guild parts of the display immediately.
       updateText()
 
@@ -257,8 +297,22 @@ do
       -- Debounce to handle bursts of simultaneous member events.
       scheduleUpdate()
 
+    elseif event == "CLUB_ADDED" then
+      -- CLUB_ADDED fires as each club subscription becomes ready after login,
+      -- often AFTER PLAYER_LOGIN — so the subscription cycle above may have
+      -- run against an empty or partial club list. Re-subscribe to this
+      -- specific club now that its data is confirmed available.
+      local clubId = ...
+      if clubId then
+        C_Club.SetClubPresenceSubscription(clubId)
+        C_Timer.After(0.5, function()
+          C_Club.SetClubPresenceSubscription(0)
+          scheduleUpdate()
+        end)
+      end
+
     else
-      -- FRIENDLIST_UPDATE, BN_FRIEND_*, CHAT_MSG_BN_* —
+      -- FRIENDLIST_UPDATE, BN_FRIEND_*, CHAT_MSG_BN_*, CLUB_MEMBER_UPDATED —
       -- data is immediately available for these.
       scheduleUpdate()
     end
