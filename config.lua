@@ -3,6 +3,7 @@ local
 addonName,
 ---@class ns
 addon = ...
+
 local L = addon.L
 local ldbi = LibStub('LibDBIcon-1.0', true)
 
@@ -68,11 +69,11 @@ local function build()
         name = L["Battle.net Friends"],
         order = 10,
         args = {
-          ShowRealID = buildCheckbox("ShowRealID", 11),
+          ShowRealID          = buildCheckbox("ShowRealID", 11),
           ShowRealIDBroadcasts = buildCheckbox("ShowRealIDBroadcasts", 12),
-          ShowRealIDFactions = buildCheckbox("ShowRealIDFactions", 13),
-          ShowRealIDNotes = buildCheckbox("ShowRealIDNotes", 14),
-          ShowRealIDApp = buildCheckbox("ShowRealIDApp", 15),
+          ShowRealIDFactions  = buildCheckbox("ShowRealIDFactions", 13),
+          ShowRealIDNotes     = buildCheckbox("ShowRealIDNotes", 14),
+          ShowRealIDApp       = buildCheckbox("ShowRealIDApp", 15),
         }
       },
       characterFriends = {
@@ -80,7 +81,7 @@ local function build()
         name = L["Character Friends"],
         order = 20,
         args = {
-          ShowFriends = buildCheckbox("ShowFriends", 21),
+          ShowFriends     = buildCheckbox("ShowFriends", 21),
           ShowFriendsNote = buildCheckbox("ShowFriendsNote", 22),
         }
       },
@@ -103,17 +104,17 @@ local function build()
             none = L.MENU_STATUS_NONE,
           }, 31),
           TooltipInteraction = buildDropdown(L.MENU_INTERACTION, {
-            always = L.MENU_INTERACTION_ALWAYS,
+            always      = L.MENU_INTERACTION_ALWAYS,
             outofcombat = L.MENU_INTERACTION_OOC,
-            never = L.MENU_INTERACTION_NEVER,
+            never       = L.MENU_INTERACTION_NEVER,
           }, 32),
           ShowGroupMembers = buildCheckbox("ShowGroupMembers", 33),
           ---@diagnostic disable-next-line: missing-fields
           TooltipWidth = {
             name = L["Tooltip Width"],
             type = "range",
-            min = 0,
-            max = 1,
+            min  = 0,
+            max  = 1,
             step = 0.1,
           },
         },
@@ -123,31 +124,38 @@ local function build()
         name = L['Guild Members'],
         order = 40,
         args = {
-          ShowGuild = buildCheckbox("ShowGuild", 41),
-          ShowGuildLabel = buildCheckbox("ShowGuildLabel", 42),
-          ShowGuildNote = buildCheckbox("ShowGuildNote", 43),
-          ShowGuildONote = buildCheckbox("ShowGuildONote", 44),
+          ShowGuild       = buildCheckbox("ShowGuild", 41),
+          ShowGuildLabel  = buildCheckbox("ShowGuildLabel", 42),
+          ShowGuildNote   = buildCheckbox("ShowGuildNote", 43),
+          ShowGuildONote  = buildCheckbox("ShowGuildONote", 44),
           ---@diagnostic disable-next-line: missing-fields
           GuildSorting = {
-            type = 'header',
-            name = L["Guild Sorting"],
+            type  = 'header',
+            name  = L["Guild Sorting"],
             order = 46,
           },
-          GuildSort = buildCheckbox("GuildSort", 47),
-          GuildSortKey = buildDropdown(L.MENU_GUILD_SORT, {
-            name = L.MENU_GUILD_SORT_NAME,
-            rank = L.MENU_GUILD_SORT_RANK,
+          GuildSort          = buildCheckbox("GuildSort", 47),
+          GuildSortKey       = buildDropdown(L.MENU_GUILD_SORT, {
+            name  = L.MENU_GUILD_SORT_NAME,
+            rank  = L.MENU_GUILD_SORT_RANK,
             class = L.MENU_GUILD_SORT_CLASS,
-            note = L.MENU_GUILD_SORT_NOTE,
+            note  = L.MENU_GUILD_SORT_NOTE,
             level = L.MENU_GUILD_SORT_LEVEL,
-            zone = L.MENU_GUILD_SORT_ZONE,
+            zone  = L.MENU_GUILD_SORT_ZONE,
           }, 48),
           GuildSortAscending = buildCheckbox("GuildSortAscending", 49),
         },
       },
+      communities = {
+        type = 'group',
+        name = L['Communities'],
+        order = 50,
+        args = {
+          ShowCommunities = buildCheckbox("ShowCommunities", 51),
+        },
+      },
     },
   }
-
   return t
 end
 

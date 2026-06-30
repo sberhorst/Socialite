@@ -1,41 +1,15 @@
 local
-  ---@class string
-  addonName,
-  ---@class ns
-  addon = ...
+---@class string
+addonName,
+---@class ns
+addon = ...
+
 local L = addon.L
 local tooltip = addon.tooltip
 
--- Moved blizz functions
 local BNGetFriendGameAccountInfo = C_BattleNet.GetFriendGameAccountInfo;
 local BNGetFriendInfo = C_BattleNet.GetFriendAccountInfo;
-
 local playerRealmName = GetRealmName()
-
-local function tprint(tbl, indent)
-  if not indent then indent = 0 end
-  local toprint = string.rep(" ", indent) .. "{\r\n"
-  indent = indent + 2
-  for k, v in pairs(tbl) do
-    toprint = toprint .. string.rep(" ", indent)
-    if (type(k) == "number") then
-      toprint = toprint .. "[" .. k .. "] = "
-    elseif (type(k) == "string") then
-      toprint = toprint  .. k ..  "= "
-    end
-    if (type(v) == "number") then
-      toprint = toprint .. v .. ",\r\n"
-    elseif (type(v) == "string") then
-      toprint = toprint .. "\"" .. v .. "\",\r\n"
-    elseif (type(v) == "table") then
-      toprint = toprint .. tprint(v, indent + 2) .. ",\r\n"
-    else
-      toprint = toprint .. "\"" .. tostring(v) .. "\",\r\n"
-    end
-  end
-  toprint = toprint .. string.rep(" ", indent-2) .. "}"
-  return toprint
-end
 
 local MOBILE_HERE_ICON = "|TInterface\\ChatFrame\\UI-ChatIcon-ArmoryChat:0:0:0:0:16:16:0:16:0:16:73:177:73|t"
 local MOBILE_BUSY_ICON = "|TInterface\\ChatFrame\\UI-ChatIcon-ArmoryChat-BusyMobile:0:0:0:0:16:16:0:16:0:16|t"
@@ -43,7 +17,7 @@ local MOBILE_AWAY_ICON = "|TInterface\\ChatFrame\\UI-ChatIcon-ArmoryChat-AwayMob
 local CHECK_ICON = "|TInterface\\Buttons\\UI-CheckBox-Check:0:0|t"
 
 local function ternary(cond, a, b)
-	if cond then return a end
+  if cond then return a end
   return b
 end
 
@@ -79,92 +53,123 @@ for i = 1, _G.GetNumClasses() do
 end
 
 local function addDoubleLine(indented, left, right)
-	if indented then
-		return tooltip:AddLine(nil, nil, left, right)
-	else
-		return tooltip:AddColspanLine(3, "LEFT", left, 1, "RIGHT", right)
-	end
+  if indented then
+    return tooltip:AddLine(nil, nil, left, right)
+  else
+    return tooltip:AddColspanLine(3, "LEFT", left, 1, "RIGHT", right)
+  end
 end
 
+local clickHeader
 local function addHeader(header, color, online, total, collapsed, collapseVar)
-	header = header..":"
-	local left = normal(header)
-	if collapsed then
-		left = left.." |cff808080"..L.TOOLTIP_COLLAPSED.."|r"
-	end
-	if color then color = "|cff"..color end
-	local right = (color or "")..(online or "")..(color and "|r")..normal("/"..total)
-	local y = addDoubleLine(false, left, right)
-	tooltip:SetLineScript(y, "OnMouseDown", clickHeader, collapseVar)
-	return y
+  header = header..":"
+  local left = normal(header)
+  if collapsed then
+    left = left.." |cff808080"..L.TOOLTIP_COLLAPSED.."|r"
+  end
+  if color then color = "|cff"..color end
+  local right = (color or "")..(online or "")..(color and "|r")..normal("/"..total)
+  local y = addDoubleLine(false, left, right)
+  tooltip:SetLineScript(y, "OnMouseDown", clickHeader, collapseVar)
+  return y
+end
+
+clickHeader = function(frame, collapseVar)
+  addon.db[collapseVar] = not addon.db[collapseVar]
+  if addon._tooltipAnchorFrame then
+    addon:updateTooltip(addon._tooltipAnchorFrame)
+  end
 end
 
 local function colorText(text, className)
-	local classIndex, coloredText=nil
-
-	local class = Classes[className]
-	local color = nil
-	if class == nil then
-		color = "ffcccccc"
-	else
-		color = RAID_CLASS_COLORS[class].colorStr
-	end
-	return "|c"..color..text.."|r"
+  local class = Classes[className]
+  local color
+  if class == nil then
+    color = "ffcccccc"
+  else
+    color = RAID_CLASS_COLORS[class].colorStr
+  end
+  return "|c"..color..text.."|r"
 end
 
 local function getStatusIcon(status)
-	if addon.db.ShowStatus == "icon" then
-		if status == CHAT_FLAG_AFK then
-			return "|T"..FRIENDS_TEXTURE_AFK..":0|t"
-		elseif status == CHAT_FLAG_DND then
-			return "|T"..FRIENDS_TEXTURE_DND..":0|t"
-		end
-	end
-	return ""
+  if addon.db.ShowStatus == "icon" then
+    if status == CHAT_FLAG_AFK then
+      return "|T"..FRIENDS_TEXTURE_AFK..":0|t"
+    elseif status == CHAT_FLAG_DND then
+      return "|T"..FRIENDS_TEXTURE_DND..":0|t"
+    end
+  end
+  return ""
 end
 
 local function getStatusText(status)
-	if addon.db.ShowStatus == "text" then
-		if status ~= "" then
-			return "|cffFFFFFF"..tostring(status).."|r "
-		end
-	end
-	return ""
+  if addon.db.ShowStatus == "text" then
+    if status ~= "" then
+      return "|cffFFFFFF"..tostring(status).."|r "
+    end
+  end
+  return ""
 end
 
-local rightClickFrame
-local function getRightClickFrame()
-	if not rightClickFrame then
-		rightClickFrame = CreateFrame("Frame", addonName.."TooltipContextualMenu", _G.UIParent, "UIDropDownMenuTemplate")
-	end
-	return rightClickFrame
-end
-
+-- 12.x right-click context menu via MenuUtil (UIDropDownMenuTemplate removed in TWW)
 local function showGuildRightClick(player, isMobile)
-  local frame = getRightClickFrame()
-  frame.initialize = function()
-    print("Guild member right click temporarily disabled, sorry!")
-    -- UnitPopup_OpenMenu(_G.UIDROPDOWNMENU_OPEN_MENU, "FRIEND", nil, player)
-  end -- COMMUNITIES_WOW_MEMBER
-  frame.displayMode = "MENU";
-  frame.friendsList = false
-  frame.bnetAccountID = nil
-  frame.isMobile = isMobile
-  ToggleDropDownMenu(1, nil, frame, "cursor")
+  -- "none" strips the realm suffix for display regardless of cross-realm status.
+  -- The full Name-Realm string is kept for API calls that require it.
+  local displayName = Ambiguate(player, "none")
+  MenuUtil.CreateContextMenu(UIParent, function(ownerRegion, rootDescription)
+    rootDescription:CreateTitle(displayName)
+    rootDescription:CreateButton(WHISPER, function()
+      ChatFrame_SendTell(displayName)
+    end)
+    if not isMobile then
+      rootDescription:CreateButton(INVITE, function()
+        C_PartyInfo.InviteUnit(player)
+      end)
+    end
+    rootDescription:CreateDivider()
+    rootDescription:CreateButton(WHO, function()
+      C_FriendList.SendWho("n-" .. displayName)
+    end)
+  end)
 end
 
+-- 12.x right-click context menu for community members (UIDropDownMenuTemplate removed in TWW)
+local function showCommunityRightClick(player)
+  local displayName = Ambiguate(player, "none")
+  MenuUtil.CreateContextMenu(UIParent, function(ownerRegion, rootDescription)
+    rootDescription:CreateTitle(displayName)
+    rootDescription:CreateButton(WHISPER, function()
+      ChatFrame_SendTell(displayName)
+    end)
+    rootDescription:CreateButton(INVITE, function()
+      C_PartyInfo.InviteUnit(player)
+    end)
+    rootDescription:CreateDivider()
+    rootDescription:CreateButton(WHO, function()
+      C_FriendList.SendWho("n-" .. displayName)
+    end)
+  end)
+end
+
+-- memberType distinguishes which right-click menu / left-click behavior to use:
+--   "guild"     -> guild member dropdown
+--   "community" -> community member dropdown (added: communities weren't clickable before)
+--   nil/other   -> character friend dropdown (default, preserves old behavior)
 local function clickPlayer(frame, info, button)
-  local player, isGuild, isMobile = unpack(info)
+  local player, memberType, isMobile = unpack(info)
   if player ~= "" then
     if button == "LeftButton" then
       if IsAltKeyDown() then
         C_PartyInfo.InviteUnit(player)
       else
-        ChatFrame_SendTell(player)
+        ChatFrame_SendTell(Ambiguate(player, "none"))
       end
     elseif button == "RightButton" then
-      if isGuild then
+      if memberType == "guild" then
         showGuildRightClick(player, isMobile)
+      elseif memberType == "community" then
+        showCommunityRightClick(player)
       else
         local info = C_FriendList.GetFriendInfo(player);
         FriendsFrame_ShowDropdown(info.name, info.connected, nil, nil, nil, 1);
@@ -174,45 +179,37 @@ local function clickPlayer(frame, info, button)
 end
 
 local function sendBattleNetInvite(bnetAccountID)
-	local playerFactionGroup = UnitFactionGroup("player")
-	local index = BNGetFriendIndex(bnetAccountID)
-	if index then
-		local numGameAccounts = C_BattleNet.GetFriendNumGameAccounts(index)
-		if numGameAccounts > 1 then
-			-- See if there's only one game account we can invite
-			local validGameAccountID = nil
-			for i = 1, numGameAccounts do
-				local _, _, client, _, realmID, faction, _, _, _, _, _, _, _, _, _, bnetIDGameAccount = BNGetFriendGameAccountInfo(index, i)
-				if client == BNET_CLIENT_WOW and faction == playerFactionGroup and realmID ~= 0 then
-					-- Valid account
-					if validGameAccountID and validGameAccountID ~= bnetIDGameAccount then
-						-- Found two accounts. Bail out.
-						validGameAccountID = nil
-						break
-					else
-						validGameAccountID = bnetIDGameAccount
-					end
-				end
-			end
-			if validGameAccountID then
-				BNInviteFriend(validGameAccountID)
-				return
-			end
-			-- More than one account, show the dropdown
-			PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-			local dropDown = TravelPassDropDown
-			if dropDown.index ~= index then
-				Lib_CloseDropDownMenus()
-			end
-			dropDown.index = index
-			Lib_ToggleDropDownMenu(1, nil, dropDown, "cursor", 1, -1)
-		else
-			local bnetIDGameAccount = select(6, BNGetFriendInfo(index))
-			if bnetIDGameAccount then
-				BNInviteFriend(bnetIDGameAccount)
-			end
-		end
-	end
+  local playerFactionGroup = UnitFactionGroup("player")
+  local index = BNGetFriendIndex(bnetAccountID)
+  if index then
+    local numGameAccounts = C_BattleNet.GetFriendNumGameAccounts(index)
+    if numGameAccounts > 1 then
+      local validGameAccountID = nil
+      for i = 1, numGameAccounts do
+        local _, _, client, _, realmID, faction, _, _, _, _, _, _, _, _, _, bnetIDGameAccount = BNGetFriendGameAccountInfo(index, i)
+        if client == BNET_CLIENT_WOW and faction == playerFactionGroup and realmID ~= 0 then
+          if validGameAccountID and validGameAccountID ~= bnetIDGameAccount then
+            validGameAccountID = nil
+            break
+          else
+            validGameAccountID = bnetIDGameAccount
+          end
+        end
+      end
+      if validGameAccountID then
+        BNInviteFriend(validGameAccountID)
+        return
+      end
+      PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+      local dropDown = TravelPassDropDown
+      if dropDown.index ~= index then Lib_CloseDropDownMenus() end
+      dropDown.index = index
+      Lib_ToggleDropDownMenu(1, nil, dropDown, "cursor", 1, -1)
+    else
+      local bnetIDGameAccount = select(6, BNGetFriendInfo(index))
+      if bnetIDGameAccount then BNInviteFriend(bnetIDGameAccount) end
+    end
+  end
 end
 
 local function clickRealID(frame, info, button)
@@ -230,25 +227,13 @@ local function clickRealID(frame, info, button)
   end
 end
 
---[[
-spacer(width, count)
-PARAMETERS:
-  width - number - width of the space. Defaults to TextHeight
-  count - number - number of spacers. Defaults to 1
-RETURNS:
-string - the spacer
---]]
 local function spacer(width, count)
-	if not width then width = 0 end
-	if not count then count = 1 end
-	local height = (width == 0) and 0 or 1
-	return ("|T:"..height..":"..width.."|t"):rep(count)
+  if not width then width = 0 end
+  if not count then count = 1 end
+  local height = (width == 0) and 0 or 1
+  return ("|T:"..height..":"..width.."|t"):rep(count)
 end
 
---[[
-  If enabled, returns an icon if the friend is currently in your group or raid.
-  @param table info
---]]
 local function getGroupIndicator(info)
   if not addon.db.ShowGroupMembers or not IsInGroup() then return "" end
   local name
@@ -263,57 +248,11 @@ local function getGroupIndicator(info)
   else
     name = info.name
   end
-
   if UnitInParty(name) or UnitInRaid(name) then return CHECK_ICON end
   return spacer()
 end
 
---[[
-  Parses and returns character and battle.net friend & character information
-  @see https://wow.gamepedia.com/API_C_BattleNet.GetFriendAccountInfo
-  @see https://wow.gamepedia.com/API_C_BattleNet.GetFriendGameAccountInfo
-
-  Returns two tables, first is for friends and second is for bnet. Both are arrays of identically
-  -formatted tables. "friends" is all the normal RealID friends and "bnet" is all the friends in
-  the Battle.Net app. Any friends in the app and elsewhere are considered to only be elsewhere.
-
-  The individual player tables are formatted as follows: {
-      bnetAccountID,
-      accountName,
-      battleTag: nil if not isBattleTagFriend,
-      isAFK,
-      isDND,
-      broadcastText,
-      note,
-      focus: {
-          name,
-          client,
-          realmName,
-          realmID,
-          faction,
-          race,
-          class,
-          zone,
-          level,
-          gameText,
-          location -- zone, or gameText if zone is "" or nil
-      },
-      alts: nil or non-empty array of tables identical to focus,
-      bnet: nil or table identical to focus
-  }
-  filterClients indicates whether friends with both bnet and non-bnet should
-  be filtered out of the bnet list
-
-  @param Boolean filterClients  A flag indicating if the non-WoW clients should be filtered out
-  @returns {table friends, table bnetFriends}
-]]
 function addon:parseRealID(filterClients)
-  --[[
-    Returns the rich location information for a character
-
-    @param struct BNetGameAccountInfo
-    @returns String
-  ]]
   local function getLocation(ai)
     if ai.clientProgram == BNET_CLIENT_WOW and ai.realmName == playerRealmName then
       return ai.areaName
@@ -322,15 +261,14 @@ function addon:parseRealID(filterClients)
   end
 
   local _, numOnline = BNGetNumFriends()
-
   local friends, bnets = {}, {}
+
   for i=1, numOnline do
     local accountInfo = C_BattleNet.GetFriendAccountInfo(i);
     local toons, focus, bnet = {}, nil, nil
 
     for j=1, C_BattleNet.GetFriendNumGameAccounts(i) do
       local ai = C_BattleNet.GetFriendGameAccountInfo(i, j)
-
       local toon = {
         name = ai.characterName,
         client = ai.clientProgram,
@@ -343,9 +281,7 @@ function addon:parseRealID(filterClients)
         level = ai.characterLevel,
         location = getLocation(ai),
       }
-
       if ai.clientProgram == BNET_CLIENT_APP or ai.clientProgram == "BSAp" then
-        -- assume no more than 1 bnet toon, but check anyway
         if not bnet then bnet = toon end
       elseif ai.hasFocus then
         if focus ~= nil then table.insert(toons, 1, focus) end
@@ -381,10 +317,6 @@ function addon:parseRealID(filterClients)
   return friends, bnets
 end
 
--- Returns two counts, first is for friends and second is for bnet.
--- Identical to counting the tables from parseRealID() but cheaper
--- filterClients indicates if bnet should be filtered out of friends
--- and vice versa.
 function addon:countRealID(filterClients)
   local friends, bnet = 0, 0
   local _, numOnline = BNGetNumFriends()
@@ -421,27 +353,15 @@ function addon:renderBattleNet(tooltip, friends, isBnetClient, collapseVar)
 
   addon.tooltip:AddLine()
   local numTotal = BNGetNumFriends()
-
-  local header
-  if (isBnetClient) then
-    header = L.TOOLTIP_REALID_APP
-  else
-    header = L.TOOLTIP_REALID
-  end
+  local header = isBnetClient and L.TOOLTIP_REALID_APP or L.TOOLTIP_REALID
   local collapsed = addon.db[collapseVar]
   addHeader(header, "00A2E8", #friends, numTotal, collapsed, collapseVar)
-
   if collapsed then return end
 
   for _, friend in ipairs(friends) do
     local left = ""
-
     local focus = isBnetClient and friend.bnet or friend.focus
-
-    -- group member indicator
     local check = getGroupIndicator(friend)
-
-    -- player status
     local playerStatus = ""
     if friend.isAFK then
       playerStatus = CHAT_FLAG_AFK
@@ -449,7 +369,6 @@ function addon:renderBattleNet(tooltip, friends, isBnetClient, collapseVar)
       playerStatus = CHAT_FLAG_DND
     end
 
-    -- Character (and faction)
     local level = friend.level
     do
       local name
@@ -458,11 +377,8 @@ function addon:renderBattleNet(tooltip, friends, isBnetClient, collapseVar)
         name = focus.name and colorText(focus.name, focus.class) or "|cffFFFFFFUnknown|r"
       else
         local clientname = focus.client
-        if clientname == BNET_CLIENT_WTCG then
-          clientname = "HS"
-        elseif clientname == "App" then
-          clientname = "BN"
-        end
+        if clientname == BNET_CLIENT_WTCG then clientname = "HS"
+        elseif clientname == "App" then clientname = "BN" end
         level = "|cffFFFFFF"..(clientname or "??").."|r"
         name = "|cffCCCCCC"..(focus.name or "").."|r"
       end
@@ -471,31 +387,23 @@ function addon:renderBattleNet(tooltip, friends, isBnetClient, collapseVar)
       left = left..name.." "
     end
 
-    -- Full name
     left = left.."[|cff00A2E8"..friend.battleTag.."|r] "
-
-    -- Status
     left = left..getStatusText(playerStatus).." "
 
     local broadcastText = friend.broadcastText
-
-    -- Note
     if addon.db.ShowRealIDNotes then
       local note = friend.note
       if note and note ~= "" then
         left = left.."|cffFFFFFF"..note.."|r"
-        -- prepend "\n" onto broadcast to put it onto next line
         if broadcastText and broadcastText ~= "" then
           broadcastText = "\n"..broadcastText
         end
       end
     end
 
-    -- Broadcast
     local extraLines
     if addon.db.ShowRealIDBroadcasts then
       if broadcastText and broadcastText ~= "" then
-        -- watch out for newlines in the broadcast text
         local color = "|cff00A2E8"
         local firstLine = broadcastText:match("^([^\n]*)\n")
         if firstLine then
@@ -511,20 +419,16 @@ function addon:renderBattleNet(tooltip, friends, isBnetClient, collapseVar)
       end
     end
 
-    -- Location
     local right = focus.location and focus.location ~= "" and ("|cffFFFFFF"..focus.location.."|r") or ""
-
     local y = addon.tooltip:AddLine(check, level, left, right)
     addon.tooltip:SetLineScript(y, "OnMouseDown", clickRealID, { friend.accountName, friend.bnetAccountID })
 
-    -- Extra lines
     if extraLines then
       for _, line in ipairs(extraLines) do
         addDoubleLine(true, line)
       end
     end
 
-    -- Additional toons
     if friend.alts ~= nil then
       local playerFactionGroup = UnitFactionGroup("player")
       for _, toon in ipairs(friend.alts) do
@@ -546,77 +450,71 @@ function addon:renderBattleNet(tooltip, friends, isBnetClient, collapseVar)
   end
 end
 
-
 function addon:renderFriends(tooltip, collapseVar)
-	addon.tooltip:AddLine()
+  addon.tooltip:AddLine()
   local numTotal = C_FriendList.GetNumFriends()
   local numOnline = C_FriendList.GetNumOnlineFriends()
+  local collapsed = addon.db[collapseVar]
+  addHeader(L.TOOLTIP_FRIENDS, "FFFFFF", numOnline, numTotal, collapsed, collapseVar)
+  if collapsed then return end
 
-	local collapsed = addon.db[collapseVar]
-	addHeader(L.TOOLTIP_FRIENDS, "FFFFFF", numOnline, numTotal, collapsed, collapseVar)
-
-	if collapsed then return end
-
-	for i=1, numOnline do
-		local left = ""
-
-		local info = C_FriendList.GetFriendInfoByIndex(i)
-		local playerStatus = nil
-		if info.afk == true then
-			playerStatus = _G.CHAT_FLAG_AFK
-		elseif info.dnd == true then
-			playerStatus = _G.CHAT_FLAG_DND
-		end
-		-- Group indicator
-    local check = getGroupIndicator(info)
-
-		-- Level
-		local level = "|cffFFFFFF"..info.level.."|r"
-
-		-- Status icon
-		left = left..getStatusIcon(playerStatus)
-
-		-- Name
-		left = left..colorText(info.name, info.className).." "
-
-		-- Status
-		left = left..getStatusText(playerStatus).." "
-
-		-- Notes
-		if addon.db.ShowFriendsNote then
-			if info.notes and info.notes ~= "" then
-				left = left.."|cffFFFFFF"..info.notes.."|r "
-			end
-		end
-		local right = ""
-		if info.area ~= nil then
-			right = "|cffFFFFFF"..info.area.."|r"
-		end
-
-		local y = addon.tooltip:AddLine(check, level, left, right)
-		addon.tooltip:SetLineScript(y, "OnMouseDown", clickPlayer, { info.name, false, false, false })
-	end
-end
-
-
-function addon:renderGuild(tooltip, collapseGuildVar)
-  local function processGuildMember(i, tooltip)
+  for i=1, numOnline do
     local left = ""
-
-    local name, rank, rankIndex, level, class, zone, note, officerNote, online, playerStatus, classFileName, achievementPoints, achievementRank, isMobile = GetGuildRosterInfo(i)
-
-    local origname = name
-    name = Ambiguate(name, "guild")
-
-    local check = getGroupIndicator({ name = name })
-
-    -- fix name
-    -- local origname = name
-    if name == "" then
-      name = "Unknown"
+    local info = C_FriendList.GetFriendInfoByIndex(i)
+    local playerStatus = nil
+    if info.afk == true then
+      playerStatus = _G.CHAT_FLAG_AFK
+    elseif info.dnd == true then
+      playerStatus = _G.CHAT_FLAG_DND
     end
 
-    -- fix playerStatus
+    local check = getGroupIndicator(info)
+    local level = "|cffFFFFFF"..info.level.."|r"
+    left = left..getStatusIcon(playerStatus)
+    left = left..colorText(info.name, info.className).." "
+    left = left..getStatusText(playerStatus).." "
+
+    if addon.db.ShowFriendsNote then
+      if info.notes and info.notes ~= "" then
+        left = left.."|cffFFFFFF"..info.notes.."|r "
+      end
+    end
+
+    local right = ""
+    if info.area ~= nil then
+      right = "|cffFFFFFF"..info.area.."|r"
+    end
+
+    local y = addon.tooltip:AddLine(check, level, left, right)
+    addon.tooltip:SetLineScript(y, "OnMouseDown", clickPlayer, { info.name, nil, false })
+  end
+end
+
+function addon:renderGuild(tooltip, collapseGuildVar)
+  -- FIX: bail immediately if not in a guild — prevents nil errors on
+  -- GetNumGuildMembers(), SetGuildRosterShowOffline(), GetGuildRosterInfo()
+  if not IsInGuild() then return end
+
+  -- Built while iterating the roster below; used by renderCommunities to
+  -- backfill class/level for community members who are also guildmates
+  -- (the Club API itself has no class/level data — see renderCommunities).
+  addon._guildRosterByGUID = addon._guildRosterByGUID or {}
+  table.wipe(addon._guildRosterByGUID)
+
+  local function processGuildMember(i, tooltip)
+    local left = ""
+    local name, rank, rankIndex, level, class, zone, note, officerNote, online, playerStatus, classFileName, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(i)
+    local origname = name
+
+    if guid then
+      addon._guildRosterByGUID[guid] = { class = class, level = level }
+    end
+
+    name = Ambiguate(name, "guild")
+    local check = getGroupIndicator({ name = name })
+
+    if name == "" then name = "Unknown" end
+
     if playerStatus == 1 then
       playerStatus = CHAT_FLAG_AFK
     elseif playerStatus == 2 then
@@ -635,66 +533,43 @@ function addon:renderGuild(tooltip, collapseGuildVar)
       end
     end
 
-    -- Level
     local level = "|cffFFFFFF"..level.."|r"
 
-    -- Status icon
     if not isMobile then
-      -- Mobile icon already shows status
       left = left..getStatusIcon(playerStatus)
     end
 
-    -- Name
     left = left..colorText(name, class).." "
-
-    -- Status
     left = left..getStatusText(playerStatus).." "
+    left = left..rank.." "
 
-    -- Rank
-    left = left..rank.."  "
-
-    -- Notes
     if addon.db.ShowGuildNote then
       if note and note ~= "" then
-        left = left.."|cffFFFFFF"..note.."|r  "
+        left = left.."|cffFFFFFF"..note.."|r "
       end
     end
 
-    -- Officer Notes
     if IsOfficerNoteVisible() then
       if officerNote and officerNote ~= "" then
-        left = left.."|cffAAFFAA"..officerNote.."|r  "
+        left = left.."|cffAAFFAA"..officerNote.."|r "
       end
     end
 
-    -- Location
     local right = ""
     if zone and zone ~= "" then
       right = "|cffFFFFFF"..zone.."|r"
     end
 
     local y = addon.tooltip:AddLine(check, level, left, right)
-    addon.tooltip:SetLineScript(y, "OnMouseDown", clickPlayer, { origname, true, isMobile })
+    addon.tooltip:SetLineScript(y, "OnMouseDown", clickPlayer, { origname, "guild", isMobile })
   end
 
-  -- collectGuildRosterInfo(split, sortKey, sortAscending)
-  -- collects and sorts the guild roster
-  -- PARAMETERS:
-  --   split - boolean - whether to split the remote chat
-  --   sortKey - string - the key to sort by. nil means no sort
-  --   sortAscending - boolean - whether the sort is ascending
-  -- RETURNS:
-  --   table - array of guild roster indices
-  --   number - total guild members
-  --   number - online guild members
-  --
-  -- If `split` is true, the online and remote sections of the roster are
-  -- sorted independently. If false, they're sorted into the same table.
-  -- Every entry in the roster is an index suitable for GetGuildRosterInfo()
   local function collectGuildRosterInfo(sortKey, sortAscending)
     SetGuildRosterShowOffline(false)
-
+    -- FIX: nil-coalesce in case API returns nil while roster is loading
     local guildTotal, guildOnline = GetNumGuildMembers()
+    guildTotal  = guildTotal  or 0
+    guildOnline = guildOnline or 0
 
     local onlineTable = {}
     for i = 1, guildOnline do
@@ -706,7 +581,6 @@ function addon:renderGuild(tooltip, collapseGuildVar)
         local aname, _, arankIndex, alevel, aclass, azone, anote = GetGuildRosterInfo(a)
         local bname, _, brankIndex, blevel, bclass, bzone, bnote = GetGuildRosterInfo(b)
         if sortKey == "rank" and arankIndex ~= brankIndex then
-          -- rank indices are reversed from what you'd expect, so flip the meaning of ascending
           return ternary(sortAscending, arankIndex > brankIndex, arankIndex < brankIndex)
         end
         if sortKey == "level" and alevel ~= blevel then
@@ -716,7 +590,6 @@ function addon:renderGuild(tooltip, collapseGuildVar)
           return ternary(sortAscending, aclass < bclass, aclass > bclass)
         end
         if sortKey == "zone" and azone ~= bzone then
-          -- zones are sometimes nil when enough players are online
           if azone == nil then azone = "" end
           if bzone == nil then bzone = "" end
           return ternary(sortAscending, azone < bzone, azone > bzone)
@@ -726,37 +599,170 @@ function addon:renderGuild(tooltip, collapseGuildVar)
         end
         aname = string.lower(aname or "Unknown")
         bname = string.lower(bname or "Unknown")
-        -- if name is the secondary sort, it's always ascending
         if sortAscending or sortKey ~= "name" then
           return aname < bname
         else
           return aname > bname
         end
       end
-
       table.sort(onlineTable, sortFunc)
     end
 
     return onlineTable, guildTotal, guildOnline
   end
 
-	addon.tooltip:AddLine()
-	local wasOffline = GetGuildRosterShowOffline()
-	if wasOffline then
-		-- SetGuildRosterShowOffline() seems to sometimes trigger GUILD_ROSTER_UPDATE
-		SetGuildRosterShowOffline(false)
-	end
+  addon.tooltip:AddLine()
 
-	local sortKey = addon.db.GuildSort and addon.db.GuildSortKey or nil
-	local roster, numTotal, numOnline = collectGuildRosterInfo(sortKey, addon.db.GuildSortAscending or false)
-	local collapseGuild = addon.db[collapseGuildVar]
-	addHeader(L.TOOLTIP_GUILD, "00FF00", numOnline, numTotal, collapseGuild, collapseGuildVar)
+  local wasOffline = GetGuildRosterShowOffline()
+  if wasOffline then SetGuildRosterShowOffline(false) end
 
-	for i, guildIndex in ipairs(roster) do
-    processGuildMember(guildIndex, tooltip)
-	end
+  local sortKey = addon.db.GuildSort and addon.db.GuildSortKey or nil
+  local roster, numTotal, numOnline = collectGuildRosterInfo(sortKey, addon.db.GuildSortAscending or false)
 
-	if wasOffline then
-		SetGuildRosterShowOffline(wasOffline)
-	end
+  local collapseGuild = addon.db[collapseGuildVar]
+  addHeader(L.TOOLTIP_GUILD, "00FF00", numOnline, numTotal, collapseGuild, collapseGuildVar)
+
+  -- FIX: only render members when section is not collapsed
+  if not collapseGuild then
+    for i, guildIndex in ipairs(roster) do
+      processGuildMember(guildIndex, tooltip)
+    end
+  end
+
+  if wasOffline then SetGuildRosterShowOffline(wasOffline) end
+end
+
+-- Renders one community block per subscribed Character-type club (in-game Community),
+-- showing online/away/busy members. Excludes the player's guild (handled separately).
+function addon:renderCommunities(frame)
+  if not addon.db.ShowCommunities then return end
+
+  -- C_Club.GetSubscribedClubs() returns all clubs the player belongs to.
+  -- Confirmed via Blizzard's EnumerationTables.lua:
+  --   Enum.ClubType.BattleNet = 0  (Battle.net-account-wide clubs — rare, not what players call "Communities")
+  --   Enum.ClubType.Character = 1  (in-game Communities created via Guild & Communities panel — this is what we want)
+  --   Enum.ClubType.Guild     = 2  (the player's guild, already handled by renderGuild)
+  --   Enum.ClubType.Other     = 3
+  local clubs = C_Club.GetSubscribedClubs()
+  if not clubs or #clubs == 0 then return end
+
+  local communityClubs = {}
+  for _, club in ipairs(clubs) do
+    if club.clubType == Enum.ClubType.Character then
+      table.insert(communityClubs, club)
+    end
+  end
+  if #communityClubs == 0 then return end
+
+  -- Sort communities alphabetically by name for consistent ordering
+  table.sort(communityClubs, function(a, b)
+    return (a.name or "") < (b.name or "")
+  end)
+
+  for _, club in ipairs(communityClubs) do
+    local clubId    = club.clubId
+    local clubName  = club.name or "Community"
+    -- collapseVar is per-club so each can be collapsed independently
+    local collapseVar = "CollapseComm_" .. clubId
+
+    -- Ensure the per-club collapse key is initialised
+    if addon.db[collapseVar] == nil then
+      addon.db[collapseVar] = false
+    end
+
+    -- Enumerate members and filter to those currently online,
+    -- skipping the player's own entry (isSelf).
+    local memberIds = C_Club.GetClubMembers(clubId)
+    local online, total = {}, 0
+
+    for _, memberId in ipairs(memberIds) do
+      local info = C_Club.GetMemberInfo(clubId, memberId)
+      if info and not info.isSelf then
+        total = total + 1
+        -- Matches Blizzard's own CommunitiesMemberListMixin:UpdateMemberCount,
+        -- which counts Online, Away, and Busy as "online" (just AFK/DND variants).
+        local presence = info.presence
+        if presence == Enum.ClubMemberPresence.Online
+          or presence == Enum.ClubMemberPresence.OnlineMobile
+          or presence == Enum.ClubMemberPresence.Away
+          or presence == Enum.ClubMemberPresence.Busy then
+          table.insert(online, info)
+        end
+      end
+    end
+
+    -- Sort online members alphabetically
+    table.sort(online, function(a, b)
+      return (a.name or "") < (b.name or "")
+    end)
+
+    addon.tooltip:AddLine()
+    local collapsed = addon.db[collapseVar]
+    -- Reuse gold colour (FFD200) to distinguish communities from guild (green)
+    addHeader(clubName, "FFD200", #online, total, collapsed, collapseVar)
+
+    if not collapsed then
+      for _, memberInfo in ipairs(online) do
+        local name = memberInfo.name or "Unknown"
+        local isMobile = (memberInfo.presence == Enum.ClubMemberPresence.OnlineMobile)
+
+        -- Map club presence to the same playerStatus values used by
+        -- getStatusIcon/getStatusText for guild and friends, so the
+        -- AFK/DND icon and group-check column line up visually.
+        local playerStatus = ""
+        if memberInfo.presence == Enum.ClubMemberPresence.Away then
+          playerStatus = CHAT_FLAG_AFK
+        elseif memberInfo.presence == Enum.ClubMemberPresence.Busy then
+          playerStatus = CHAT_FLAG_DND
+        end
+
+        local check = getGroupIndicator({ name = Ambiguate(name, "none") })
+
+        -- C_Club.GetMemberInfo doesn't include class/level directly, but it
+        -- does give us memberInfo.guid. GetPlayerInfoByGUID(guid) works for
+        -- ANY character GUID (online, offline, any realm) with no inspect or
+        -- group/guild requirement — it's how Blizzard's own Communities panel
+        -- class-colors names. This is the primary path for class color.
+        --
+        -- Character level isn't returned by GetPlayerInfoByGUID, so for level
+        -- specifically we fall back to cross-referencing the guild roster
+        -- (addon._guildRosterByGUID, built in renderGuild) when this member
+        -- also happens to be a guildmate. If neither source has data, the
+        -- member renders with no class color / no level — there's nothing
+        -- further to query.
+        local localizedClass = nil
+        if memberInfo.guid then
+          local ok, result = pcall(GetPlayerInfoByGUID, memberInfo.guid)
+          if ok then localizedClass = result end
+        end
+
+        local rosterMatch = memberInfo.guid and addon._guildRosterByGUID and addon._guildRosterByGUID[memberInfo.guid]
+        local levelText = nil
+        if rosterMatch and rosterMatch.level then
+          levelText = "|cffFFFFFF"..rosterMatch.level.."|r"
+        end
+
+        local left = ""
+        if isMobile then
+          left = left..MOBILE_HERE_ICON
+        else
+          left = left..getStatusIcon(playerStatus)
+        end
+
+        if localizedClass then
+          left = left..colorText(name, localizedClass).." "
+        else
+          left = left.."|cffFFFFFF"..name.."|r "
+        end
+        left = left..getStatusText(playerStatus)
+
+        local right = ""
+
+        local y = addon.tooltip:AddLine(check, levelText, left, right)
+        -- name is in "Name-Realm" format, same as guild roster — clickPlayer
+        -- and the right-click menu already handle stripping the realm for display.
+        addon.tooltip:SetLineScript(y, "OnMouseDown", clickPlayer, { name, "community", isMobile })
+      end
+    end
+  end
 end
