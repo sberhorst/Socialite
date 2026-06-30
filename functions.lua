@@ -661,7 +661,7 @@ function addon:renderCommunities(frame)
 
   for _, club in ipairs(communityClubs) do
     local clubId    = club.clubId
-    local clubName  = club.name or "Community"
+    local clubName  = club.name or L.TOOLTIP_COMMUNITY
     -- collapseVar is per-club so each can be collapsed independently
     local collapseVar = "CollapseComm_" .. clubId
 
