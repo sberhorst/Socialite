@@ -248,7 +248,20 @@ local function getGroupIndicator(info)
   else
     name = info.name
   end
-  if UnitInParty(name) or UnitInRaid(name) then return CHECK_ICON end
+  -- Precautionary, not a confirmed break. Patch 12.1.0 lists UnitInRaid
+  -- among the APIs that return a secret when the unit's identity is secret,
+  -- and branching on a secret raises. A friend or guild member queried by
+  -- name should not be a secret unit -- secrecy is for units the game is
+  -- actively hiding, like arena opponents -- but this renders on tooltip
+  -- hover, which happens mid-combat, and an error here takes out the whole
+  -- tooltip rather than one row. Same pcall-the-comparison pattern already
+  -- used elsewhere in these addons. Falls back to "not grouped", which
+  -- costs a check icon at worst.
+  local inGroup = false
+  pcall(function()
+    inGroup = (UnitInParty(name) or UnitInRaid(name)) and true or false
+  end)
+  if inGroup then return CHECK_ICON end
   return spacer()
 end
 
