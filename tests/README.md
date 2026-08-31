@@ -96,3 +96,21 @@ removed, renamed, or restricted. That edit is the point of the file: it turns
 This harness is shared with AdventureKit and SpeedTracker. `wow_stub.py` is
 addon-agnostic — `ADDON_ROOT` resolves to the repo containing `tests/` — so
 improvements are worth copying across all three.
+
+## Two fixes carried in from ElitistsToolkit
+
+`wow_stub.py` is shared across AdventureKit, ElitistsToolkit, SpeedTracker and
+Socialite. Two faults were found in it while writing ElitistsToolkit's tests,
+and the corrected file has been copied here.
+
+1. **`stubframe` answered every unknown key with a no-op function.** Functions
+   are truthy in Lua, so any `if frame.mySentinel then` guard saw its own flag
+   already set. Hooks were never installed and the tests went green over code
+   that never ran. Frame *methods* are PascalCase and stashed *fields* are not,
+   so the initial capital is now the split.
+2. **`CreateFrame` discarded the frame's name.** The client publishes a named
+   frame as a global, and addons rely on that, so nothing was reachable by the
+   name it is actually given.
+
+This addon's existing results were re-run before and after the swap and did
+not change. The fixes matter for what can be tested from here on.
