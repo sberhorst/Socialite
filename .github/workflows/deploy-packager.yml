@@ -3,9 +3,18 @@ name: Deploy via BigWigs Packager
 on:
   push:
     branches:
-      - master
+      - main
     tags:
       - "*"
+
+# Triggers on main, not master. This fork's master is an exact mirror of
+# upstream (solocommand/Socialite) and carries none of our work, so a
+# packager run from it would publish upstream's build under our project.
+# Our own code lives on main, which is where a release should be cut from.
+#
+# Before this, the trigger pointed at master while every commit we made went
+# to a feature branch, so the packager never ran at all -- no failed runs,
+# nothing red, just a pipeline that silently never fired.
 
 jobs:
   build:
