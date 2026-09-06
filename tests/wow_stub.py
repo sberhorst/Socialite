@@ -98,6 +98,24 @@ stubframe = function()
     self._point = {p, rel, rp, x or 0, y or 0} return self
   end
   function f:GetPoint() local p = self._point return p[1], p[2], p[3], p[4], p[5] end
+  -- Event registration is real, and fire_event() honours it.
+  --
+  -- Dispatching to every frame regardless of what it registered for makes a
+  -- whole category of test meaningless: the addon's handler runs whether or
+  -- not it remembered to RegisterEvent, so forgetting the registration
+  -- entirely still passes. Caught by a mutation that deleted a
+  -- RegisterEvent line and turned nothing red.
+  f._events = {}
+  function f:RegisterEvent(e)     self._events[e] = true return self end
+  function f:RegisterUnitEvent(e) self._events[e] = true return self end
+  function f:UnregisterEvent(e)   self._events[e] = nil  return self end
+  function f:UnregisterAllEvents() self._events = {}     return self end
+  function f:RegisterAllEvents()  self._allEvents = true return self end
+  function f:IsEventRegistered(e) return self._events[e] == true end
+  function f:StubHandlesEvent(e)
+    return (self._allEvents == true) or (self._events[e] == true)
+  end
+
   -- Secure-button attributes carry real state. Without this, GetAttribute
   -- fell through to the no-op below and returned the frame itself, so a test
   -- could not tell "this button casts spell X" from "this button does
@@ -365,8 +383,15 @@ def fire_event(lua, event, *args):
     frames = lua.globals().TEST.frames
     for frame in list(frames.values()):
         handler = frame.GetScript(frame, "OnEvent")
-        if handler is not None:
-            handler(frame, event, *args)
+        if handler is None:
+            continue
+        # Only frames that actually registered for this event, exactly as the
+        # client behaves. Dispatching to everything hid missing RegisterEvent
+        # calls -- the handler ran anyway and the test went green over an
+        # addon that would have been deaf in game.
+        if not frame.StubHandlesEvent(frame, event):
+            continue
+        handler(frame, event, *args)
 
 
 def set_auras(lua, pairs_):
